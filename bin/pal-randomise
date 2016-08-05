@@ -14,18 +14,19 @@ Options:
     --group=<group>          A .grp file from FSL's GLM.
     --mask=<mask>            A NIFTI mask file.
     --cleanup                Delete intermediate files.
+    --dtimode                Uses 2D TFCE for DTI data.
 
 Details:
     A wrapper for FSL's randomise and cluster programs.
 
-    Takes a list of input files (full paths), and a .mat, .con, .grp triplet
-    from FSL's GLM interface, and runs FSL randomize on them. This wrapper
+    Takes a list of input files (full paths), and a .mat, .con, and optional .grp
+    file from FSL's GLM interface, and runs FSL randomize on them. This wrapper
     uses threshold-free cluster enhancement (TFCE) and voxel-wise statistics
     for all outputs. The stats are then concatenated, thresholded statmaps are
     produced, and a cluster table for each statmap is produced in a space-
     delimited format using FSL cluster.
 
-    All outputs are put in the present working directory.
+    All outputs are written to the present working directory.
 
 Requirements:
     FSL
@@ -45,8 +46,8 @@ def get_n_contrasts(contrasts):
     n_contrasts = 0
     f = open(contrasts, 'rb')
     for l in f.readlines():
-        if l.startswith('/ContrastName'):
-            n_contrasts += 1
+        if l.startswith('/NumPoints'):
+            n_contrasts = l.split(' ')[1]
 
     return n_contrasts
 
@@ -63,6 +64,7 @@ def main():
     group     = arguments['--group']
     mask      = arguments['--mask']
     cleanup   = arguments['--cleanup']
+    dtimode   = arguments['--dtimode']
 
     # check/convert inputs
     check_exist(subjlist)
@@ -70,25 +72,32 @@ def main():
     n = int(n)
     check_exist(design)
     check_exist(contrasts)
-    check_exist(group)
     if mask:
         check_exist(mask)
 
+    # generate thresholded t-stat map for each contrast
+    n_contrasts = get_n_contrasts(contrasts)
+    if n_contrasts == 0:
+        sys.exit('ERROR: number of contrasts improperly defined in .con file')
+
     # create 4d input file
-    if os.path.isfile('all_subjects.nii.gz'):
-        os.remove('all_subjects.nii.gz')
-    os.system('subjects=$(cat {}); fslmerge -t all_subjects.nii.gz ${{subjects}}'.format(subjlist))
+    if os.path.isfile('{}_all_subjects.nii.gz'.format(prefix)) == False:
+        os.system('subjects=$(cat {}); fslmerge -t {}_all_subjects.nii.gz ${{subjects}}'.format(
+                      prefix, subjlist))
 
     # run randomise if raw outputs with prefix are not found
     if not os.path.isfile('randomise_{}_raw.nii.gz'.format(prefix)):
-        cmd = 'randomise -i all_subjects -o {} -d {} -t {} -e {} -n {} -T -x'.format(
-                                               prefix, design, contrasts, group, n)
+        cmd = 'randomise -i {}_all_subjects.nii.gz -o {} -d {} -t {} -n {} -x'.format(
+                  prefix, prefix, design, contrasts, n)
         if mask:
             cmd = '{} -m {}'.format(cmd, mask)
+        if group:
+            cmd = '{} -e {}'.format(cmd, group)
+        if dtimode:
+            cmd = '{} -T2'.format(cmd)
+        else:
+            cmd = '{} -T'.format(cmd)
         os.system(cmd)
-
-    # generate thresholded t-stat map for each contrast
-    n_contrasts = get_n_contrasts(contrasts)
 
     raw_list = ''
     t_list_vox = ''
