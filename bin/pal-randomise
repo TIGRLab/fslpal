@@ -83,7 +83,7 @@ def main():
     # create 4d input file
     if os.path.isfile('{}_all_subjects.nii.gz'.format(prefix)) == False:
         os.system('subjects=$(cat {}); fslmerge -t {}_all_subjects.nii.gz ${{subjects}}'.format(
-                      prefix, subjlist))
+                      subjlist, prefix))
 
     # run randomise if raw outputs with prefix are not found
     if not os.path.isfile('randomise_{}_raw.nii.gz'.format(prefix)):
