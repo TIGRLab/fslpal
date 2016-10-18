@@ -61,9 +61,13 @@ def covar_column(df, col, group=None):
     print('MSG: adding covariate column {}'.format(col))
 
     if group:
-        idx = df['group'] == group
-        data = df[col][idx]
+        # mean center the entire covariate (irrespective of group)
+        data = df[col]
         data = data - np.mean(data)
+
+        # now zero out the values associated with the other groups, nans
+        idx = df['group'] == group
+        data = data[idx]
         data[data.isnull()] = 0
         covar = np.zeros(df.shape[0])
         covar[idx.as_matrix()] = data
