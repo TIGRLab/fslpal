@@ -112,7 +112,7 @@ def main():
     test = database[database.columns[0]]
 
     # remove all commented-out rows (build numpy index manually)
-    matches = filter(lambda x: x.startswith('#'), test.tolist())
+    matches = filter(lambda x: str(x).startswith('#'), test.tolist())
 
     if len(matches) > 0:
         # build numpy index of non-commented rows manually
