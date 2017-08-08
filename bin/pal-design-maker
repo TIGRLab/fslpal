@@ -111,12 +111,17 @@ def main():
     database = pd.read_csv(database)
     test = database[database.columns[0]]
 
-    # ~test.str.startswith will return typeerror if no # found
-    try:
-        idx = ~test.str.startswith('#')
-        database = database[idx]
-    except TypeError:
-        pass
+    # remove all commented-out rows (build numpy index manually)
+    matches = filter(lambda x: x.startswith('#'), test.tolist())
+
+    if len(matches) > 0:
+        # build numpy index of non-commented rows manually
+        idx = []
+        for match in matches:
+            idx.append(np.where(test == match)[0][0])
+        idx = np.array(idx)
+        idx = np.setdiff1d(np.arange(len(test)), idx)
+        database = database.iloc[idx]
 
     # exit if the surviving rows contain nans
     if database.isnull().values.any():
